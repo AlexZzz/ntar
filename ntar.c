@@ -22,33 +22,46 @@ int main(int argc, char*argv[])
 		return(1);
 	}
 
-	int out_f;
+	int fd;
 	char* filename;
 	struct stat *f_stat=malloc(sizeof(struct stat));
 		
 	if (strcmp(argv[1], "cf") == 0) {
 		
-		if ( (out_f = creat(argv[2],0666)) == -1) {
+		if ( (fd = creat(argv[2], 0666)) == -1) {
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
 		filename=argv[3];
 
-		append(filename,out_f);
+		append_arch(filename, fd);
 
 	} else if(strcmp(argv[1], "af") == 0) {
-		//check file exists and open with
-		//pointer at end and add files
+		
+		if ( (fd = open(argv[2], O_APPEND | O_WRONLY)) == -1 ) {
+			perror(argv[2]);
+			exit(EXIT_FAILURE);
+		}
+		filename=argv[3];
+		
+		append_arch(filename, fd);
 	} else if(strcmp(argv[1], "xf") == 0) {
-		//check file exists and extract one-by-one
+		if ( (fd = open(argv[2], O_RDONLY)) == -1 ) {
+			perror(argv[2]);
+			exit(EXIT_FAILURE);
+		}
 	} else if(strcmp(argv[1], "tf") == 0) {
-		//check file exists and show files and attrs
+		if ( (fd = open(argv[2], O_RDONLY)) == -1 ) {
+			perror(argv[2]);
+			exit(EXIT_FAILURE);
+		}
+		read_arch(&fd, list_arch);
 	} else {
 		fprintf(stderr, "Usage: %s cf|af|xf|tf archive [filenames...]\n"
 			,argv[0]);
 		return(1);
 	}
-	close(out_f);
+	close(fd);
 	return(0);
 }
 
