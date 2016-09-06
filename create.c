@@ -16,7 +16,7 @@ struct file_entry {
 	off_t size;
 };
 
-int append(char* filename,int file_out)
+void append(char* filename,int file_out)
 {
 	struct stat st;
 	lstat(filename,&st);
@@ -59,18 +59,12 @@ int append(char* filename,int file_out)
 			write(file_out, buf, is_read);
 		}
 		close(fd);
+		
 	} else if(S_IFLNK == (st.st_mode & S_IFMT)) {
 		ident = 'l';
+		write(file_out, &ident, sizeof(char));
 		
 		buf = malloc(st.st_size);
-		
-		write(file_out, filename, (sizeof(char)*strlen(filename)));
-		write(file_out, &st.st_uid, sizeof(uid_t));
-		write(file_out, &st.st_gid, sizeof(gid_t));
-		write(file_out, &st.st_mode, sizeof(mode_t));
-		write(file_out, &st.st_mtime, sizeof(struct timespec));
-		write(file_out, &st.st_size, sizeof(off_t));
-		write(file_out, &ident, sizeof(char));
 		
 		int fd = open(filename, O_RDONLY);
 		if (fd == -1) {
@@ -81,30 +75,15 @@ int append(char* filename,int file_out)
 			perror(filename);
 			exit(1);
 		}
-		//strcat(buf,buf);
 		write(file_out, buf, st.st_size);
 		close(fd);
+		
 	} else if(S_IFIFO == (st.st_mode & S_IFMT)) {
 		ident = 'p';
-		
-		write(file_out, filename, (sizeof(char)*strlen(filename)));
-		write(file_out, &st.st_uid, sizeof(uid_t));
-		write(file_out, &st.st_gid, sizeof(gid_t));
-		write(file_out, &st.st_mode, sizeof(mode_t));
-		write(file_out, &st.st_mtime, sizeof(struct timespec));
-		write(file_out, &st.st_size, sizeof(off_t));
 		write(file_out, &ident, sizeof(char));
 		
 	} else if(S_IFSOCK == (st.st_mode & S_IFMT)) {
 		ident = 's';
-		
-		write(file_out, filename, (sizeof(char)*strlen(filename)));
-		write(file_out, &st.st_uid, sizeof(uid_t));
-		write(file_out, &st.st_gid, sizeof(gid_t));
-		write(file_out, &st.st_mode, sizeof(mode_t));
-		write(file_out, &st.st_mtime, sizeof(struct timespec));
-		write(file_out, &st.st_size, sizeof(off_t));
 		write(file_out, &ident, sizeof(char));
 	}
-	return 0;
 }
