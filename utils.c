@@ -6,6 +6,8 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <time.h>
+#include <pwd.h>
+#include <grp.h>
 
 /* 
  * Filename
@@ -183,15 +185,19 @@ void list_arch(int *fd)
 {
 	struct file_entry file_e;
 	char* time_str;
+	struct passwd *pass;
+	struct group *grp;
 	
 	while(get_entry(&file_e,fd) == 0) {
 		time_str = ctime((time_t*)&file_e.mtime);
 		time_str[strlen(time_str)-1]='\0'; //remove \n
-		printf("\n%c %o %d:%d %d %s %s ",
+		pass = getpwuid(file_e.uid);
+		grp = getgrgid(file_e.gid);
+		printf("\n%c %o %s:%s %d %s %s ",
 				file_e.ident,
 				file_e.mode,
-				file_e.uid,
-				file_e.gid,
+				pass->pw_name,
+				grp->gr_name,
 				(int)file_e.size,
 				time_str,
 				file_e.name);
