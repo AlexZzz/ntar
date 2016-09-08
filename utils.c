@@ -43,7 +43,7 @@ void append_arch(char* filename, int file_out)
 	char *buf;
 	int num_files=0;
 	
-	if(S_IFSOCK == (st.st_mode & S_IFMT)) {
+	if(S_ISSOCK(st.st_mode)) {
 		return;
 	}
 		
@@ -54,7 +54,7 @@ void append_arch(char* filename, int file_out)
 	write(file_out, &st.st_mtime, sizeof(struct timespec));
 	write(file_out, &st.st_size, sizeof(off_t));
 	
-	if(S_IFDIR == (st.st_mode & S_IFMT)) {
+	if(S_ISDIR(st.st_mode)) {
 		ident='d';
 		write(file_out, &ident, sizeof(char));
 		
@@ -77,7 +77,7 @@ void append_arch(char* filename, int file_out)
 		chdir("..");
 		closedir(dir_stream);
 		
-	} else if(S_IFREG == (st.st_mode & S_IFMT)) {
+	} else if(S_ISREG(st.st_mode)) {
 		ident = 'f';
 		write(file_out, &ident, sizeof(char));
 		
@@ -91,7 +91,7 @@ void append_arch(char* filename, int file_out)
 		close(fd);
 		free(buf);
 		
-	} else if(S_IFLNK == (st.st_mode & S_IFMT)) {
+	} else if(S_ISLNK(st.st_mode)) {
 		ident = 'l';
 		write(file_out, &ident, sizeof(char));
 		buf = malloc(st.st_size);
@@ -110,7 +110,7 @@ void append_arch(char* filename, int file_out)
 		close(fd);
 		free(buf);
 		
-	} else if(S_IFIFO == (st.st_mode & S_IFMT)) {
+	} else if(S_ISFIFO(st.st_mode)) {
 		ident = 'p';
 		write(file_out, &ident, sizeof(char));
 	}
@@ -163,14 +163,14 @@ int get_entry(struct file_entry * file_e, int *fd)
 		exit(EXIT_FAILURE);
 	}
 	
-	if (S_IFDIR == (file_e->mode & S_IFMT)) {
+	if (S_ISDIR(file_e->mode)) {
 		buf = (char*) &file_e->num_files;
 		if ( (num_read = read(*fd, buf, sizeof(int))) <= 0 ) {
 			exit(EXIT_FAILURE);
 		}
 	}
 	
-	if (file_e->size > 0 && S_IFDIR != (file_e->mode & S_IFMT)) {
+	if (file_e->size > 0 && !S_ISDIR(file_e->mode)) {
 		file_e->content = malloc(file_e->size);
 		buf = file_e->content;
 		if( (num_read = read(*fd, buf, file_e->size)) <= 0 ) {

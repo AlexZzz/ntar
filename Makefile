@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=
+CFLAGS=-std=c11 -D_BSD_SOURCE
 
 OBJ=ntar.o
 
