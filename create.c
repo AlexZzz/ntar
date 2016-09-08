@@ -17,6 +17,14 @@
  * id
  * content
  * 
+ * TODO переименовать файл
+ * 		поправить форматирование
+ * 		добавить extract
+ * 		сделать нормальный .h
+ *		сделать makefile
+ * 
+ * 
+ * 
  */
  
 struct file_entry {
@@ -27,6 +35,7 @@ struct file_entry {
 	struct timespec mtime;
 	size_t size;
 	char ident;
+	int num_files; //if dir
 	char* content;
 };
 
@@ -36,8 +45,13 @@ void append_arch(char* filename, int file_out)
 	lstat(filename,&st);
 	char ident;
 	char *buf;
+	int num_files=0;
+	
+	if(S_IFSOCK == (st.st_mode & S_IFMT)) {
+		return;
+	}
 		
-	write(file_out, filename, (sizeof(char)*(strlen(filename)+1)));//len + '\0'
+	write(file_out, basename(filename), (sizeof(char)*(strlen(basename(filename))+1)));
 	write(file_out, &st.st_uid, sizeof(uid_t));
 	write(file_out, &st.st_gid, sizeof(gid_t));
 	write(file_out, &st.st_mode, sizeof(mode_t));
@@ -53,7 +67,13 @@ void append_arch(char* filename, int file_out)
 		DIR* dir_stream = opendir(filename);
 		chdir(filename);
 		while((dir = readdir(dir_stream)) != NULL) {
-			printf("%s\n",dir->d_name);
+			if ( (strcmp(dir->d_name, ".")) != 0 && (strcmp(dir->d_name, "..")) != 0) {
+				num_files++;
+			}
+		}
+		write(file_out, &num_files, sizeof(int));
+		rewinddir(dir_stream);
+		while((dir = readdir(dir_stream)) != NULL) {
 			if ( (strcmp(dir->d_name, ".")) != 0 && (strcmp(dir->d_name, "..")) != 0) {
 				append_arch(dir->d_name,file_out);
 			}
@@ -73,11 +93,11 @@ void append_arch(char* filename, int file_out)
 			write(file_out, buf, is_read);
 		}
 		close(fd);
+		free(buf);
 		
 	} else if(S_IFLNK == (st.st_mode & S_IFMT)) {
 		ident = 'l';
 		write(file_out, &ident, sizeof(char));
-		
 		buf = malloc(st.st_size);
 		
 		int fd = open(filename, O_RDONLY);
@@ -89,31 +109,15 @@ void append_arch(char* filename, int file_out)
 			perror(filename);
 			exit(1);
 		}
+		buf[st.st_size] = '\0';
 		write(file_out, buf, st.st_size);
 		close(fd);
+		free(buf);
 		
 	} else if(S_IFIFO == (st.st_mode & S_IFMT)) {
 		ident = 'p';
 		write(file_out, &ident, sizeof(char));
-		
-	} else if(S_IFSOCK == (st.st_mode & S_IFMT)) {
-		ident = 's';
-		write(file_out, &ident, sizeof(char));
 	}
-}
-
-void extract_arch(struct file_entry *file_e)
-{
-	
-}
-
-void list_arch(struct file_entry *file_e)
-{
-	printf("%c %s %d:%d %d %o %s", file_e->ident, file_e->name, file_e->uid,
-			file_e->gid, (int)file_e->size, file_e->mode,
-			ctime((time_t*)&file_e->mtime));
-			
-			//TODO: format
 }
 
 int get_entry(struct file_entry * file_e, int *fd)
@@ -163,6 +167,12 @@ int get_entry(struct file_entry * file_e, int *fd)
 		exit(EXIT_FAILURE);
 	}
 	
+	if (S_IFDIR == (file_e->mode & S_IFMT)) {
+		buf = (char*) &file_e->num_files;
+		if ( (num_read = read(*fd, buf, sizeof(int))) <= 0 ) {
+			exit(EXIT_FAILURE);
+		}
+	}
 	
 	if (file_e->size > 0 && S_IFDIR != (file_e->mode & S_IFMT)) {
 		file_e->content = malloc(file_e->size);
@@ -170,18 +180,68 @@ int get_entry(struct file_entry * file_e, int *fd)
 		if( (num_read = read(*fd, buf, file_e->size)) <= 0 ) {
 			exit(EXIT_FAILURE);
 		}
+		buf[file_e->size]='\0';
 	}
 	
 	return 0;
 }
 
-void read_arch(int *fd,
-				void (*func)(struct file_entry*))
+void list_arch(int *fd)
+{
+	struct file_entry file_e;
+	char* time_str;
+	
+	while(get_entry(&file_e,fd) == 0) {
+		time_str = ctime((time_t*)&file_e.mtime);
+		time_str[strlen(time_str)-1]='\0'; //remove \n
+		printf("\n%c %o %d:%d %d %s %s ",
+				file_e.ident,
+				file_e.mode,
+				file_e.uid,
+				file_e.gid,
+				(int)file_e.size,
+				time_str,
+				file_e.name);
+		if (file_e.ident == 'l') {
+			printf(" -> %s", file_e.content);
+		}
+		printf("\n");
+	}
+}
+
+void extract_file(struct file_entry *file_e, int *fd)
+{
+	if (file_e->ident == 'd') {
+		mkdir(file_e->name, file_e->mode);
+		chown(file_e->name, file_e->uid, file_e->gid);
+		chdir(file_e->name);
+		struct file_entry in_dir;
+		while(file_e->num_files > 0) {
+			if(get_entry(&in_dir,fd) == 0) {
+				extract_file(&in_dir, fd);
+			}
+			file_e->num_files--;
+		}
+		chdir("..");
+	} else if (file_e->ident == 'f') {
+		int fd = creat(file_e->name, file_e->mode);
+		chown(file_e->name, file_e->uid, file_e->gid);
+		write(fd, file_e->content, file_e->size);
+		close(fd);
+	} else if (file_e->ident == 'l') {
+		symlink(file_e->content, file_e->name);
+		chown(file_e->name, file_e->uid, file_e->gid);
+	} else if (file_e->ident == 'p') {
+		mkfifo(file_e->name, file_e->mode);
+		chown(file_e->name, file_e->uid, file_e->gid);
+	}
+}
+
+void extract_arch(int *fd)
 {
 	struct file_entry file_e;
 	
-	while(get_entry(&file_e, fd) == 0) {
-		(*func)(&file_e);
-	}
-	
+	while(get_entry(&file_e,fd) == 0) {
+		extract_file(&file_e, fd);
+	}	
 }

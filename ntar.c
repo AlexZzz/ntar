@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include "create.c"
 
@@ -24,6 +25,7 @@ int main(int argc, char*argv[])
 
 	int fd;
 	char* filename;
+	char* current_dir;
 	struct stat *f_stat=malloc(sizeof(struct stat));
 		
 	if (strcmp(argv[1], "cf") == 0) {
@@ -32,30 +34,44 @@ int main(int argc, char*argv[])
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
-		filename=argv[3];
-
-		append_arch(filename, fd);
+		current_dir = (char*) get_current_dir_name();
+		
+		for (int i=3; i<argc; i++){
+			printf("%s\n",(char*) get_current_dir_name());
+			filename=argv[i];
+			append_arch(filename, fd);
+			chdir(current_dir);
+		}
+		free(current_dir);
 
 	} else if(strcmp(argv[1], "af") == 0) {
-		
 		if ( (fd = open(argv[2], O_APPEND | O_WRONLY)) == -1 ) {
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
-		filename=argv[3];
+		current_dir = (char*) get_current_dir_name();
 		
-		append_arch(filename, fd);
+		for (int i=3; i<argc; i++){
+			filename=argv[i];
+			append_arch(filename, fd);
+			chdir(current_dir);
+		}
+		free(current_dir);
+		
 	} else if(strcmp(argv[1], "xf") == 0) {
 		if ( (fd = open(argv[2], O_RDONLY)) == -1 ) {
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
+		extract_arch(&fd);
+		
 	} else if(strcmp(argv[1], "tf") == 0) {
 		if ( (fd = open(argv[2], O_RDONLY)) == -1 ) {
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
-		read_arch(&fd, list_arch);
+		list_arch(&fd);
+		
 	} else {
 		fprintf(stderr, "Usage: %s cf|af|xf|tf archive [filenames...]\n"
 			,argv[0]);
