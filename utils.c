@@ -8,6 +8,7 @@
 #include <time.h>
 #include <pwd.h>
 #include <grp.h>
+#include <utime.h>
 
 /* 
  * Filename
@@ -214,6 +215,8 @@ void list_arch(int *fd)
 //Extract one file
 void extract_file(struct file_entry *file_e, int *fd)
 {
+	struct utimbuf new_time;
+	
 	if (file_e->ident == 'd') {
 		mkdir(file_e->name, file_e->mode);
 		chown(file_e->name, file_e->uid, file_e->gid);
@@ -226,17 +229,25 @@ void extract_file(struct file_entry *file_e, int *fd)
 			file_e->num_files--;
 		}
 		chdir("..");
+		new_time.modtime = file_e->mtime.tv_sec;
+		utime(file_e->name, &new_time);
 	} else if (file_e->ident == 'f') {
 		int fd = creat(file_e->name, file_e->mode);
 		chown(file_e->name, file_e->uid, file_e->gid);
 		write(fd, file_e->content, file_e->size);
+		new_time.modtime = file_e->mtime.tv_sec;
+		utime(file_e->name, &new_time);
 		close(fd);
 	} else if (file_e->ident == 'l') {
 		symlink(file_e->content, file_e->name);
 		chown(file_e->name, file_e->uid, file_e->gid);
+		new_time.modtime = file_e->mtime.tv_sec;
+		utime(file_e->name, &new_time);
 	} else if (file_e->ident == 'p') {
 		mkfifo(file_e->name, file_e->mode);
 		chown(file_e->name, file_e->uid, file_e->gid);
+		new_time.modtime = file_e->mtime.tv_sec;
+		utime(file_e->name, &new_time);
 	}
 }
 
