@@ -33,6 +33,7 @@ struct file_entry {
 	char* content;
 };
 
+//recursively writes files to file_out
 void append_arch(char* filename, int file_out)
 {
 	struct stat st;
@@ -43,7 +44,7 @@ void append_arch(char* filename, int file_out)
 	char *buf;
 	int num_files=0;
 	
-	if(S_ISSOCK(st.st_mode)) {
+	if(S_ISSOCK(st.st_mode)) { //don't copy unix sockets
 		return;
 	}
 		
@@ -67,8 +68,8 @@ void append_arch(char* filename, int file_out)
 				num_files++;
 			}
 		}
-		write(file_out, &num_files, sizeof(int));
-		rewinddir(dir_stream);
+		write(file_out, &num_files, sizeof(int));// need to know number
+		rewinddir(dir_stream);					//before recursive call
 		while((dir = readdir(dir_stream)) != NULL) {
 			if ( (strcmp(dir->d_name, ".")) != 0 && (strcmp(dir->d_name, "..")) != 0) {
 				append_arch(dir->d_name,file_out);
@@ -110,12 +111,13 @@ void append_arch(char* filename, int file_out)
 		close(fd);
 		free(buf);
 		
-	} else if(S_ISFIFO(st.st_mode)) {
+	} else if(S_ISFIFO(st.st_mode)) { //copy fifo without content
 		ident = 'p';
 		write(file_out, &ident, sizeof(char));
 	}
 }
 
+//Gets file entry from *fd and writes to struct file_entry*
 int get_entry(struct file_entry * file_e, int *fd)
 {
 	int num_read;
@@ -181,6 +183,7 @@ int get_entry(struct file_entry * file_e, int *fd)
 	return 0;
 }
 
+//Show files in archive
 void list_arch(int *fd)
 {
 	struct file_entry file_e;
@@ -208,6 +211,7 @@ void list_arch(int *fd)
 	}
 }
 
+//Extract one file
 void extract_file(struct file_entry *file_e, int *fd)
 {
 	if (file_e->ident == 'd') {
@@ -236,6 +240,7 @@ void extract_file(struct file_entry *file_e, int *fd)
 	}
 }
 
+//Extract full archive
 void extract_arch(int *fd)
 {
 	struct file_entry file_e;
