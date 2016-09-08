@@ -15,16 +15,8 @@
  * MTIME
  * SIZE
  * id
+ * num_files
  * content
- * 
- * TODO переименовать файл
- * 		поправить форматирование
- * 		добавить extract
- * 		сделать нормальный .h
- *		сделать makefile
- * 
- * 
- * 
  */
  
 struct file_entry {
@@ -42,7 +34,9 @@ struct file_entry {
 void append_arch(char* filename, int file_out)
 {
 	struct stat st;
-	lstat(filename,&st);
+	if (lstat(filename,&st) == -1){
+		perror(filename);
+	}
 	char ident;
 	char *buf;
 	int num_files=0;
@@ -180,7 +174,6 @@ int get_entry(struct file_entry * file_e, int *fd)
 		if( (num_read = read(*fd, buf, file_e->size)) <= 0 ) {
 			exit(EXIT_FAILURE);
 		}
-		buf[file_e->size]='\0';
 	}
 	
 	return 0;

@@ -8,12 +8,8 @@
 #include <errno.h>
 #include <libgen.h>
 
-#include "create.c"
+#include "utils.c"
 
-//int create();
-//int append();
-//int extract();
-//int list();
 
 int main(int argc, char*argv[])
 {
@@ -25,7 +21,7 @@ int main(int argc, char*argv[])
 
 	int fd;
 	char* filename;
-	char* current_dir;
+	char current_dir[256];
 	struct stat *f_stat=malloc(sizeof(struct stat));
 		
 	if (strcmp(argv[1], "cf") == 0) {
@@ -34,29 +30,26 @@ int main(int argc, char*argv[])
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
-		current_dir = (char*) get_current_dir_name();
+		getcwd(current_dir, 256);
 		
 		for (int i=3; i<argc; i++){
-			printf("%s\n",(char*) get_current_dir_name());
 			filename=argv[i];
 			append_arch(filename, fd);
 			chdir(current_dir);
 		}
-		free(current_dir);
 
 	} else if(strcmp(argv[1], "af") == 0) {
 		if ( (fd = open(argv[2], O_APPEND | O_WRONLY)) == -1 ) {
 			perror(argv[2]);
 			exit(EXIT_FAILURE);
 		}
-		current_dir = (char*) get_current_dir_name();
+		getcwd(current_dir, 256);
 		
 		for (int i=3; i<argc; i++){
 			filename=argv[i];
 			append_arch(filename, fd);
 			chdir(current_dir);
 		}
-		free(current_dir);
 		
 	} else if(strcmp(argv[1], "xf") == 0) {
 		if ( (fd = open(argv[2], O_RDONLY)) == -1 ) {
